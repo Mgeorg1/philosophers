@@ -4,14 +4,21 @@
 # include <stdlib.h>
 # include <pthread.h>
 # include <stdio.h>
+# include <sys/time.h>
+
+struct	s_all;
 
 typedef struct s_philo
 {
-	int			id;
-	t_all		*all;
-	int			l_fork;
-	int			r_fork;
-	pthread_t	m_philo;
+	int				id;
+	struct s_all	*all;
+	int				l_fork;
+	int				r_fork;
+	pthread_t		m_philo;
+	int				ph_ttodie;
+	int				cur_ttodie;
+	int				eat;
+	pthread_t		death;
 }	t_philo;
 
 typedef struct s_all
@@ -25,6 +32,8 @@ typedef struct s_all
 	pthread_mutex_t	message;
 	int				inc;
 	t_philo			*philo;
+	pthread_mutex_t	death;
+	long int		t_start;
 }		t_all;
 
 int	ft_atoi(const char *str);

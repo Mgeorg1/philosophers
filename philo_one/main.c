@@ -1,5 +1,13 @@
 #include "philo_one.h"
 
+long int	gettime(void)
+{
+	struct timeval	tp;
+
+	gettimeofday(&tp, NULL);
+	return (1000 * tp.tv_sec + tp.tv_usec / 1000);
+}
+
 int	print_error(char *s)
 {
 	printf("ERROR\n%s\n", s);
@@ -22,6 +30,8 @@ int	is_digit_str(char *s)
 
 int	init_args(t_all *all, int argc, char **argv)
 {
+	int i;
+
 	if (argc == 6)
 		all->eat_num = ft_atoi(argv[5]);
 	else
@@ -36,38 +46,94 @@ int	init_args(t_all *all, int argc, char **argv)
 	all->fork = malloc(sizeof(pthread_mutex_t) * (all->phl_num));
 	if (!all->fork)
 		return (1);
+	all->t_start = gettime();
+	i = -1;
+	while (++i < all->phl_num)
+		all->philo[i].all = all;
 	all->philo->all = all;
 	return (0);
 }
 
-void	display_message(t_all *all, int philo, char *s, int tstmp)
+void	display_message(t_all *all, int philo, char *s, long int tstmp)
 {
+	tstmp = tstmp - all->t_start;
 	pthread_mutex_lock(&all->message);
-	printf("%i philo %i %s\n", tstmp, philo, s);
+	printf("%-8ld philo %i %s\n", tstmp, philo, s);
 	pthread_mutex_unlock(&all->message);
 }
 
-void	grab_fork(t_philo *philo, int i)
+
+void grab_fork(t_philo *philo, int i)
 {
+	long int	tmsp;
+
 	pthread_mutex_lock(&philo->all->fork[i]);
-	display_message(philo->all, philo->id, "has taken fork", tmpsp); // получить время 
+	tmsp = gettime();
+	display_message(philo->all, philo->id + 1, "has taken fork", tmsp); // получить время 
+}
+
+void	eat(t_philo *philo, int l, int r)
+{
+	long int	tmsp;
+
+	tmsp = gettime();
+	display_message(philo->all, philo->id, "is eating", tmsp);
+	usleep(philo->all->ttoeat * 1000);
+	philo->eat++;
+	pthread_mutex_unlock(&philo->all->fork[r]);
+	pthread_mutex_unlock(&philo->all->fork[l]);
+}
+
+void	ph_sleep(t_philo *philo)
+{
+	long int tmsp;
+
+	tmsp = gettime();
+	display_message(philo->all, philo->id + 1, "is sleeping", tmsp);
+	usleep(philo->all->ttosleep * 1000);
+}
+
+void	*death(void *arg)
+{
+	t_philo	*philo;
+	long int t;
+
+	philo = arg;
+	pthread_mutex_init(&philo->all->death, NULL);
+	while (1)
+	{
+		t = gettime();
+		t -= philo->all->t_start;
+		if (t > philo->all->ttodie)
+		{
+			display_message(philo->all, philo->id + 1, "died", gettime());
+			exit(0);
+		}
+	}
+	return (NULL);
 }
 
 void	*routine(void *arg)
 {
 	t_philo	*philo;
-	int		i;
-
 	philo = arg;
 	philo->r_fork = philo->id;
 	philo->l_fork = philo->id + 1;
+	pthread_create(&philo->death, NULL, death, arg);
 	if (philo->l_fork == philo->all->phl_num)
 		philo->l_fork = 0;
-	i = 0;
-	while (i < philo->all->eat_num)
+	while (1)
 	{
-		grab_
+		while (philo->eat < philo->all->eat_num)
+		{
+			grab_fork(philo, philo->r_fork);
+			grab_fork(philo, philo->l_fork);
+			eat(philo, philo->l_fork, philo->r_fork);
+			ph_sleep(philo);
+			display_message(philo->all, philo->id + 1, "is thinking", gettime());
+		}
 	}
+	return (NULL);
 }
 
 int	init_philos(t_all *all)
@@ -82,8 +148,14 @@ int	init_philos(t_all *all)
 	while (++i < all->phl_num)
 	{	
 		all->philo[i].id = i;
-		pthread_create(&all->philo[i].m_philo, NULL, &routine, (void *)all->philo[i]);
+		all->philo[i].eat = 0;
+		pthread_create(&all->philo[i].m_philo, NULL, &routine, (void *)&all->philo[i]);
+		usleep(100);
 	}
+	i = -1;
+	while (++i < all->phl_num)
+		pthread_join(all->philo[i].m_philo, NULL);
+	return (0);
 }
 
 int	main(int argc, char **argv)
@@ -101,4 +173,5 @@ int	main(int argc, char **argv)
 		i++;
 	}
 	init_args(&all, argc, argv);
+	init_philos(&all);
 }
