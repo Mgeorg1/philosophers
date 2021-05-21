@@ -1,3 +1,5 @@
+#include "./philo_one.h"
+
 static int	ft_isspace(const char *str)
 {
 	if (*str == ' ' || *str == '\t' || *str == '\r'
@@ -49,5 +51,32 @@ int	ft_isdigit(int c)
 {
 	if (c >= '0' && c <= '9')
 		return (1);
+	return (0);
+}
+
+int	ft_strncmp(const char *s1, const char *s2, size_t n)
+{
+	unsigned char	*a;
+	unsigned char	*b;
+	size_t			i;
+
+	a = (unsigned char *)s1;
+	b = (unsigned char *)s2;
+	i = 0;
+	while ((*a || *b) && i < n)
+	{
+		if (*a != *b)
+		{
+			if (*a > *b)
+				return (1);
+			else if (*a < *b)
+				return (-1);
+			else
+				return (0);
+		}
+		a++;
+		b++;
+		i++;
+	}
 	return (0);
 }

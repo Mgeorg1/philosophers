@@ -5,6 +5,7 @@
 # include <pthread.h>
 # include <stdio.h>
 # include <sys/time.h>
+# include <string.h>
 
 struct	s_all;
 
@@ -16,9 +17,11 @@ typedef struct s_philo
 	int				r_fork;
 	pthread_t		m_philo;
 	int				ph_ttodie;
-	int				cur_ttodie;
+	long int		cur_ttodie;
 	int				eat;
 	pthread_t		death;
+	int				eating;
+	pthread_mutex_t	philo_mutex;
 }	t_philo;
 
 typedef struct s_all
@@ -39,5 +42,6 @@ typedef struct s_all
 int	ft_atoi(const char *str);
 int	ft_strlen(char *s);
 int	ft_isdigit(int c);
+int	ft_strncmp(const char *s1, const char *s2, size_t n);
 
 #endif
