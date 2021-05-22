@@ -60,12 +60,16 @@ void	display_message(t_all *all, int philo, char *s)
 	long int	tstmp;
 	// tstmp = tstmp - all->t_start;
 	pthread_mutex_lock(&all->message);
+	if (!f && !ft_strncmp(s, "full", 5))
+		f = 1;
 	if (!f)
 	{
+		if (!ft_strncmp(s, "is eating", 10))
+			all->philo[philo].eat++;
 		tstmp = gettime() - all->t_start;
 		if (!ft_strncmp(s, "died", 5))
 			f = 1;
-		printf("%-8ld philo %-4i %s\n", tstmp, philo, s);
+			printf("%-8ld philo %-4i %s\n", tstmp, philo, s);
 	}
 	pthread_mutex_unlock(&all->message);
 }
@@ -82,10 +86,10 @@ void	eat(t_philo *philo, int l, int r)
 	philo->eating = 1;
 	display_message(philo->all, philo->id + 1, "is eating");
 	usleep(philo->all->ttoeat * 1000);
-	philo->eat++;
 	philo->cur_ttodie = gettime();
 	pthread_mutex_unlock(&philo->all->fork[r]);
 	pthread_mutex_unlock(&philo->all->fork[l]);
+	//philo->eat++;
 	philo->eating = 0;
 }
 
@@ -97,24 +101,47 @@ void	ph_sleep(t_philo *philo)
 
 void	*death(void *arg)
 {
-	t_philo	*philo;
-	long int t;
+	t_philo		*philo;
+	long int	t;
 
 	philo = arg;
 	while (1)
 	{
-		pthread_mutex_lock(&philo->philo_mutex);
+		pthread_mutex_lock(&philo->all->philo_mutex);
 		t = gettime();
 		t -= philo->cur_ttodie;
-		if (t > philo->all->ttodie && !philo->eating)
+		if (t > philo->all->ttodie && !philo->eating && !philo->all->done)
 		{
 			display_message(philo->all, philo->id + 1, "died");
-			pthread_mutex_unlock(&philo->philo_mutex);
+			pthread_mutex_unlock(&philo->all->philo_mutex);
 			pthread_mutex_unlock(&philo->all->death);
 			return (NULL);
 		}
-		pthread_mutex_unlock(&philo->philo_mutex);
+		pthread_mutex_unlock(&philo->all->philo_mutex);
 		usleep(1000);
+	}
+	return (NULL);
+}
+
+void	*is_philo_full(void *arg)
+{
+	t_philo		*philo;
+	static int	full = 0;
+
+	philo = arg;
+	if (philo->all->eat_num)
+	{
+		while (full <= philo->all->phl_num)
+		{
+			if (philo->eat == philo->all->eat_num)
+				full++;
+		}
+		usleep(1000);
+		// printf("%i\n", full);
+		display_message(philo->all, philo->id + 1, "full");
+		pthread_mutex_unlock(&philo->all->death);
+		philo->all->done = 1;
+		return (NULL);
 	}
 	return (NULL);
 }
@@ -128,11 +155,13 @@ void	*routine(void *arg)
 	philo->cur_ttodie = philo->all->t_start;
 	pthread_create(&philo->death, NULL, death, arg);
 	pthread_detach(philo->death);
+	pthread_create(&philo->full, NULL, is_philo_full, arg);
+	pthread_detach(philo->full);
 	if (philo->l_fork == philo->all->phl_num)
 		philo->l_fork = 0;
 	// while (1)
 	// {
-		while (philo->eat < philo->all->eat_num || !philo->all->eat_num)
+		while (!philo->all->done || !philo->all->eat_num)
 		{
 			grab_fork(philo, philo->r_fork);
 			grab_fork(philo, philo->l_fork);
@@ -141,6 +170,7 @@ void	*routine(void *arg)
 			display_message(philo->all, philo->id + 1, "is thinking");
 		}
 	// }
+	pthread_mutex_unlock(&philo->all->death);
 	return (NULL);
 }
 
@@ -152,14 +182,15 @@ int	init_philos(t_all *all)
 	pthread_mutex_init(&all->message, NULL);
 	pthread_mutex_init(&all->death, NULL);
 	pthread_mutex_lock(&all->death);
+	all->done = 0;
 	while (++i < all->phl_num)
 		pthread_mutex_init(&all->fork[i], NULL);
 	i = -1;
+	pthread_mutex_init(&all->philo_mutex, NULL);
 	while (++i < all->phl_num)
 	{	
 		all->philo[i].id = i;
 		all->philo[i].eat = 0;
-		pthread_mutex_init(&all->philo[i].philo_mutex, NULL);
 		pthread_create(&all->philo[i].m_philo, NULL, &routine, (void *)&all->philo[i]);
 		pthread_detach(all->philo[i].m_philo);
 		usleep(100);

@@ -21,7 +21,7 @@ typedef struct s_philo
 	int				eat;
 	pthread_t		death;
 	int				eating;
-	pthread_mutex_t	philo_mutex;
+	pthread_t		full;
 }	t_philo;
 
 typedef struct s_all
@@ -36,7 +36,9 @@ typedef struct s_all
 	int				inc;
 	t_philo			*philo;
 	pthread_mutex_t	death;
+	pthread_mutex_t	philo_mutex;
 	long int		t_start;
+	int				done;
 }		t_all;
 
 int	ft_atoi(const char *str);
