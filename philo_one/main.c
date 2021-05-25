@@ -127,8 +127,8 @@ void	*death(void *arg)
 	philo = (t_philo*)arg;
 	while (!philo->all->done)
 	{
-		t = gettime() - philo->cur_ttodie;
 		pthread_mutex_lock(&philo->eat_mutex);
+		t = gettime() - philo->cur_ttodie;
 		if (t > philo->all->ttodie && !philo->eating)
 		{
 			display_message(philo, "is died");
