@@ -8,7 +8,7 @@ OBJS	=	$(SRCS:.c=.o)
 all:	$(NAME)
 
 $(NAME):	$(OBJS)
-			gcc -Wall -Wextra -Werror $(SRCS) -o $(NAME)
+			gcc -Wall -Wextra -Werror -lpthread $(SRCS) -o $(NAME)
 
 clean: 
 		rm -f $(OBJS)

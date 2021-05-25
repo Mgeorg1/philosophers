@@ -107,8 +107,8 @@ void	eat(t_philo *philo)
 	pthread_mutex_lock(&philo->eat_mutex);
 	display_message(philo, "is eating");
 	philo->eat++;
-	philo->cur_ttodie = gettime();
 	usleep(philo->all->ttoeat);
+	philo->cur_ttodie = gettime();
 	pthread_mutex_unlock(&philo->eat_mutex);
 	philo->eating = 0;
 }
@@ -139,6 +139,7 @@ void	*death(void *arg)
 			return (NULL);
 		}
 		pthread_mutex_unlock(&philo->eat_mutex);
+		usleep(1000);
 	}
 	return (NULL);
 }
@@ -152,6 +153,8 @@ void	*routine(void *arg)
 	philo = (t_philo *)arg;
 	r_fork = philo->id;
 	l_fork = philo->id + 1;
+	if (l_fork == philo->all->phl_num)
+		l_fork = 0;
 	philo->eating = 0;
 	philo->cur_ttodie = philo->all->t_start;
 	pthread_create(&philo->death, NULL, death, (void*)philo);
