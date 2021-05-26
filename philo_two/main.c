@@ -1,4 +1,4 @@
-#include "./philo_one.h"
+#include "./philo_two.h"
 
 long long	gettime(void)
 {
@@ -55,7 +55,6 @@ int	init_args(t_all *all, int argc, char **argv)
 	all->philo = malloc(sizeof(t_philo) * (all->phl_num));
 	if (!all->philo)
 		return (print_error("malloc error"));
-	all->fork = malloc(sizeof(pthread_mutex_t) * (all->phl_num));
 	if (!all->fork)
 		return (print_error("malloc error"));
 	all->t_start = gettime();
@@ -73,55 +72,21 @@ void	display_message(t_philo *philo, char *s)
 	t = gettime() - philo->all->t_start;
 	if (philo->all->done)
 		return ;
-	pthread_mutex_lock(&philo->all->message);
-	if (!philo->all->done)
+	sem_wait(philo->all->message);
+	if (!philo->all->done && !philo->full)
 		printf("%-8lli philo %-4i %s\n", t, philo->id + 1, s);
-	pthread_mutex_unlock(&philo->all->message);
-}
-
-void	grab_fork(t_philo *philo, int i)
-{
-	pthread_mutex_lock(&philo->all->fork[i]);
-	display_message(philo, "has taken a fork");
-	pthread_mutex_unlock(&philo->all->fork[i]);
-
-}
-
-void	get_ticket(t_philo *philo)
-{
-	int done;
-
-	done = 0;
-	while (!done)
-	{
-		pthread_mutex_lock(&philo->all->ticket_mutex);
-		if (philo->all->ticket > 0)
-		{
-			philo->all->ticket--;
-			done = 1;
-		}
-		else
-			done = 0;
-		pthread_mutex_unlock(&philo->all->ticket_mutex);
-	}
-}
-
-void	return_ticket(t_philo *philo)
-{
-	pthread_mutex_lock(&philo->all->ticket_mutex);
-	philo->all->ticket++;
-	pthread_mutex_unlock(&philo->all->ticket_mutex);
+	sem_post(philo->all->message);
 }
 
 void	eat(t_philo *philo)
 {
 	philo->eating = 1;
-	pthread_mutex_lock(&philo->eat_mutex);
+	sem_wait(philo->eat_sem);
 	philo->cur_ttodie = gettime();
 	display_message(philo, "is eating");
 	fix_sleep(philo->all->ttoeat);
 	philo->eat++;
-	pthread_mutex_unlock(&philo->eat_mutex);
+	sem_post(philo->eat_sem);
 	philo->eating = 0;
 }
 
@@ -139,36 +104,38 @@ void	*death(void *arg)
 	philo = (t_philo*)arg;
 	while (!philo->all->done)
 	{
-		pthread_mutex_lock(&philo->eat_mutex);
+		sem_wait(philo->eat_sem);
 		t = gettime() - philo->cur_ttodie;
 		if (t > philo->all->ttodie && !philo->eating)
 		{
-			pthread_mutex_lock(&philo->all->status);
 			display_message(philo, "is died");
 			philo->all->done = 1;
-			pthread_mutex_lock(&philo->all->message);
-			pthread_mutex_unlock(&philo->eat_mutex);
-			pthread_mutex_unlock(&philo->all->status);
-			// pthread_mutex_unlock(&philo->all->death);
+			sem_post(philo->eat_sem);
 			return (NULL);
 		}
-		pthread_mutex_unlock(&philo->eat_mutex);
+		sem_post(philo->eat_sem);
 		//	fix_sleep(10000);
 	}
 	return (NULL);
 }
 
+void	get_ticket(t_philo *philo)
+{
+	sem_wait(philo->all->ticket_sem);
+}
+
+void	return_ticket(t_philo *philo)
+{
+	sem_post(philo->all->ticket_sem);
+}
+
 void	*routine(void *arg)
 {
 	t_philo	*philo;
-	int		r_fork;
-	int		l_fork;
+	int 	i;
+	int		count;
 
 	philo = (t_philo *)arg;
-	r_fork = philo->id;
-	l_fork = philo->id + 1;
-	if (l_fork == philo->all->phl_num)
-		l_fork = 0;
 	philo->eating = 0;
 	philo->cur_ttodie = philo->all->t_start;
 	pthread_create(&philo->death, NULL, death, (void*)philo);
@@ -176,19 +143,33 @@ void	*routine(void *arg)
 	while (!philo->all->done && !philo->full)
 	{
 		get_ticket(philo);
-		grab_fork(philo, r_fork);
-		grab_fork(philo, l_fork);
+		sem_wait(philo->all->fork);
+		display_message(philo, "has taken a fork");
+		sem_wait(philo->all->fork);
+		display_message(philo, "has taken a fork");
 		eat(philo);
-		pthread_mutex_unlock(&philo->all->fork[l_fork]);
-		pthread_mutex_unlock(&philo->all->fork[r_fork]);
+		sem_post(philo->all->fork);
+		sem_post(philo->all->fork);
 		return_ticket(philo);
 		if (philo->eat >= philo->all->eat_num && philo->all->eat_num)
+		{
+			philo->full = 1;
 			break ;
+		}
 		philo_sleep(philo);
 		display_message(philo, "is thinking");
 	}
-	// philo->all->done = 1;
-	// pthread_mutex_unlock(&philo->all->death);
+	i = -1;
+	count = 0;
+	while (++i < philo->all->phl_num)
+	{
+		if (philo->all->philo[i].eat == philo->all->eat_num)
+			count++;
+	}
+	if (count == philo->all->phl_num)
+	{
+		philo->all->done = 1;
+	}
 	return (NULL);
 }
 
@@ -197,22 +178,30 @@ int	philo_init(t_all *all)
 	int	i;
 
 	i = -1;
-	pthread_mutex_init(&all->message, NULL);
-	pthread_mutex_init(&all->ticket_mutex, NULL);
-	pthread_mutex_init(&all->death, NULL);
-	pthread_mutex_init(&all->status, NULL);
-	pthread_mutex_lock(&all->death);
-	all->ticket = all->phl_num - 1;
+	sem_unlink("fork");
+	sem_unlink("message");
+	sem_unlink("eat");
+	sem_unlink("ticket");
+	all->fork = sem_open("fork", O_CREAT, 0644, all->phl_num);
+	if (all->fork == SEM_FAILED)
+		return (print_error("FATAL"));
+	all->message = sem_open("message", O_CREAT, 0644, 1);
+	if (all->message == SEM_FAILED)
+		return (print_error("FATAL"));
+	all->ticket_sem = sem_open("ticket", O_CREAT, 0644, all->phl_num - 1);
+	if (all->ticket_sem == SEM_FAILED)
+		return (print_error("FATAL"));
 	all->done = 0;
-	while (++i < all->phl_num)
-		pthread_mutex_init(&all->fork[i], NULL);
 	i = -1;
 	while (++i < all->phl_num)
 	{	
 		all->philo[i].id = i;
 		all->philo[i].eat = 0;
 		all->philo[i].full = 0;
-		pthread_mutex_init(&all->philo[i].eat_mutex, NULL);
+		sem_unlink(ft_itoa(i));
+		all->philo[i].eat_sem = sem_open(ft_itoa(i), O_CREAT, 0644, 1);
+		if (all->philo[i].eat_sem == SEM_FAILED)
+			return (print_error("FATAL"));
 		pthread_create(&all->philo[i].m_philo, NULL, &routine, (void *)&all->philo[i]);
 		// pthread_detach(all->philo[i].m_philo);
 	}
@@ -232,14 +221,16 @@ void	clear_all(t_all *all)
 	i = -1;
 	while (++i < all->phl_num)
 	{
-		pthread_mutex_destroy(&all->philo[i].eat_mutex);
-		pthread_mutex_destroy(&all->fork[i]);
+		sem_unlink(ft_itoa(i));
+		sem_close(all->philo[i].eat_sem);
 	}
 	free(all->philo);
-	free(all->fork);
-	pthread_mutex_destroy(&all->message);
-	pthread_mutex_destroy(&all->death);
-	pthread_mutex_destroy(&all->ticket_mutex);
+	sem_unlink("message");
+	sem_close(all->message);
+	sem_unlink("fork");
+	sem_close(all->fork);
+	sem_unlink("ticket");
+	sem_close(all->ticket_sem);
 }
 
 int	main(int argc, char **argv)

@@ -1,11 +1,13 @@
-#ifndef PHILO_ONE_H
-# define PHILO_ONE_H
+#ifndef PHILO_TWO_H
+# define PHILO_TWO_H
 # include <unistd.h>
 # include <stdlib.h>
 # include <pthread.h>
 # include <stdio.h>
 # include <sys/time.h>
 # include <string.h>
+# include <semaphore.h>
+# include <fcntl.h>
 
 struct	s_all;
 
@@ -21,7 +23,7 @@ typedef struct s_philo
 	int				eat;
 	pthread_t		death;
 	int				eating;
-	pthread_mutex_t	eat_mutex;
+	sem_t			*eat_sem;
 	int				full;
 }	t_philo;
 
@@ -32,21 +34,20 @@ typedef struct s_all
 	int				ttosleep;
 	int				eat_num;
 	int				phl_num;
-	pthread_mutex_t	*fork;
-	pthread_mutex_t	message;
+	sem_t			*fork;
+	sem_t			*message;
 	int				inc;
 	t_philo			*philo;
-	pthread_mutex_t	death;
-	pthread_mutex_t	ticket_mutex;
+	sem_t			*ticket_sem;
 	pthread_mutex_t	status;
-	int				ticket;
 	int				done;
 	long long		t_start;
 }		t_all;
 
-int	ft_atoi(const char *str);
-int	ft_strlen(char *s);
-int	ft_isdigit(int c);
-int	ft_strncmp(const char *s1, const char *s2, size_t n);
+int		ft_atoi(const char *str);
+int		ft_strlen(char *s);
+int		ft_isdigit(int c);
+int		ft_strncmp(const char *s1, const char *s2, size_t n);
+char	*ft_itoa(int n);
 
 #endif
