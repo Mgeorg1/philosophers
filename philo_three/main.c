@@ -55,8 +55,6 @@ int	init_args(t_all *all, int argc, char **argv)
 	all->philo = malloc(sizeof(t_philo) * (all->phl_num));
 	if (!all->philo)
 		return (print_error("malloc error"));
-	if (!all->fork)
-		return (print_error("malloc error"));
 	all->t_start = gettime();
 	i = -1;
 	while (++i < all->phl_num)
@@ -81,9 +79,9 @@ void	display_message(t_philo *philo, char *s)
 void	eat(t_philo *philo)
 {
 	philo->eating = 1;
+	philo->cur_ttodie = gettime();
 	sem_wait(philo->eat_sem);
 	display_message(philo, "is eating");
-	philo->cur_ttodie = gettime();
 	fix_sleep(philo->all->ttoeat);
 	philo->eat++;
 	sem_post(philo->eat_sem);
@@ -110,13 +108,12 @@ void	*death(void *arg)
 		{
 			sem_wait(philo->all->status);
 			display_message(philo, "is died");
+			sem_post(philo->all->die);
 			philo->all->done = 1;
 			sem_post(philo->eat_sem);
-			sem_post(philo->all->status);
-			return (NULL);
+			exit(0);
 		}
 		sem_post(philo->eat_sem);
-		fix_sleep(10);
 	}
 	return (NULL);
 }
@@ -134,8 +131,6 @@ void	return_ticket(t_philo *philo)
 void	*routine(void *arg)
 {
 	t_philo	*philo;
-	int 	i;
-	int		count;
 
 	philo = (t_philo *)arg;
 	philo->eating = 0;
@@ -161,18 +156,22 @@ void	*routine(void *arg)
 		philo_sleep(philo);
 		display_message(philo, "is thinking");
 	}
-	i = -1;
-	count = 0;
-	while (++i < philo->all->phl_num)
-	{
-		if (philo->all->philo[i].eat == philo->all->eat_num)
-			count++;
-	}
-	if (count == philo->all->phl_num)
-	{
-		philo->all->done = 1;
-	}
 	return (NULL);
+}
+
+void	*is_die(void *arg)
+{
+	t_all	*all;
+	int		i;
+
+	all = arg;
+	sem_wait(all->die);
+	i = -1;
+	while (++i < all->phl_num)
+	{
+		kill(all->philo[i].pid, SIGTERM);
+	}
+	return (0);
 }
 
 int	philo_init(t_all *all)
@@ -184,9 +183,13 @@ int	philo_init(t_all *all)
 	sem_unlink("message");
 	sem_unlink("eat");
 	sem_unlink("ticket");
+	sem_unlink("die");
 	sem_unlink("status");
 	all->fork = sem_open("fork", O_CREAT, 0644, all->phl_num);
 	if (all->fork == SEM_FAILED)
+		return (print_error("FATAL"));
+	all->die = sem_open("die", O_CREAT, 0644, 1);
+	if (all->die == SEM_FAILED)
 		return (print_error("FATAL"));
 	all->message = sem_open("message", O_CREAT, 0644, 1);
 	if (all->message == SEM_FAILED)
@@ -199,6 +202,7 @@ int	philo_init(t_all *all)
 		return (print_error("FATAL"));
 	all->done = 0;
 	i = -1;
+	sem_wait(all->die);
 	while (++i < all->phl_num)
 	{	
 		all->philo[i].id = i;
@@ -208,16 +212,22 @@ int	philo_init(t_all *all)
 		all->philo[i].eat_sem = sem_open(ft_itoa(i), O_CREAT, 0644, 1);
 		if (all->philo[i].eat_sem == SEM_FAILED)
 			return (print_error("FATAL"));
-		pthread_create(&all->philo[i].m_philo, NULL, &routine, (void *)&all->philo[i]);
-		fix_sleep(1);
-		// pthread_detach(all->philo[i].m_philo);
+		all->philo[i].pid = fork();
+		if (all->philo[i].pid < 0)
+			return (print_error("FATAL: can not creat proccess"));
+		if (all->philo[i].pid == 0)
+		{
+			routine(&all->philo[i]);
+			exit(EXIT_SUCCESS);
+		}
 	}
+	pthread_create(&all->is_die, NULL, is_die, all);
+	pthread_detach(all->is_die);
 	i = -1;
-	while(++i < all->phl_num)
+	while (++i < all->phl_num)
 	{
-		pthread_join(all->philo[i].m_philo, NULL);
+		waitpid(all->philo[i].pid, 0, 0);
 	}
-	all->done = 1;
 	return (0);
 }
 

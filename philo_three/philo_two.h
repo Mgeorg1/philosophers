@@ -8,6 +8,7 @@
 # include <string.h>
 # include <semaphore.h>
 # include <fcntl.h>
+# include <signal.h>
 
 struct	s_all;
 
@@ -25,6 +26,7 @@ typedef struct s_philo
 	int				eating;
 	sem_t			*eat_sem;
 	int				full;
+	int				pid;
 }	t_philo;
 
 typedef struct s_all
@@ -40,6 +42,8 @@ typedef struct s_all
 	t_philo			*philo;
 	sem_t			*ticket_sem;
 	sem_t			*status;
+	sem_t			*die;
+	pthread_t		is_die;
 	int				done;
 	long long		t_start;
 }		t_all;
