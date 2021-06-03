@@ -31,6 +31,7 @@ int	is_digit_str(char *s)
 void	fix_sleep(long long n)
 {
 	long long	t;
+
 	t = gettime();
 	while (gettime() - t < n)
 	{
@@ -50,7 +51,8 @@ int	init_args(t_all *all, int argc, char **argv)
 	all->ttodie = ft_atoi(argv[2]);
 	all->ttoeat = ft_atoi(argv[3]);
 	all->ttosleep = ft_atoi(argv[4]);
-	if (all->phl_num < 2 || all->ttodie < 1 || all->ttoeat < 1 || all->ttosleep < 1)
+	if (all->phl_num < 2 || all->ttodie < 1 || all->ttoeat < 1
+		|| all->ttosleep < 1)
 		return (print_error("wrong argument"));
 	all->philo = malloc(sizeof(t_philo) * (all->phl_num));
 	if (!all->philo)
@@ -64,12 +66,12 @@ int	init_args(t_all *all, int argc, char **argv)
 		all->philo[i].all = all;
 	all->philo->all = all;
 	return (0);
-	
 }
 
 void	display_message(t_philo *philo, char *s)
 {
-	long long t;
+	long long	t;
+
 	t = gettime() - philo->all->t_start;
 	if (philo->all->done)
 		return ;
@@ -84,12 +86,11 @@ void	grab_fork(t_philo *philo, int i)
 	pthread_mutex_lock(&philo->all->fork[i]);
 	display_message(philo, "has taken a fork");
 	pthread_mutex_unlock(&philo->all->fork[i]);
-
 }
 
 void	get_ticket(t_philo *philo)
 {
-	int done;
+	int	done;
 
 	done = 0;
 	while (!done)
@@ -136,7 +137,7 @@ void	*death(void *arg)
 	t_philo		*philo;
 	long long	t;
 
-	philo = (t_philo*)arg;
+	philo = (t_philo *)arg;
 	while (!philo->all->done)
 	{
 		pthread_mutex_lock(&philo->eat_mutex);
@@ -146,16 +147,19 @@ void	*death(void *arg)
 			pthread_mutex_lock(&philo->all->status);
 			display_message(philo, "is died");
 			philo->all->done = 1;
-			pthread_mutex_lock(&philo->all->message);
 			pthread_mutex_unlock(&philo->eat_mutex);
 			pthread_mutex_unlock(&philo->all->status);
-			// pthread_mutex_unlock(&philo->all->death);
 			return (NULL);
 		}
 		pthread_mutex_unlock(&philo->eat_mutex);
-		//	fix_sleep(10000);
 	}
 	return (NULL);
+}
+
+void	down_forks(t_philo *philo, int l_fork, int r_fork)
+{
+	pthread_mutex_unlock(&philo->all->fork[l_fork]);
+	pthread_mutex_unlock(&philo->all->fork[r_fork]);
 }
 
 void	*routine(void *arg)
@@ -169,57 +173,71 @@ void	*routine(void *arg)
 	l_fork = philo->id + 1;
 	if (l_fork == philo->all->phl_num)
 		l_fork = 0;
-	philo->eating = 0;
-	philo->cur_ttodie = philo->all->t_start;
-	pthread_create(&philo->death, NULL, death, (void*)philo);
+	pthread_create(&philo->death, NULL, death, (void *)philo);
 	pthread_detach(philo->death);
-	while (!philo->all->done && !philo->full)
+	while (!philo->all->done)
 	{
 		get_ticket(philo);
 		grab_fork(philo, r_fork);
 		grab_fork(philo, l_fork);
 		eat(philo);
-		pthread_mutex_unlock(&philo->all->fork[l_fork]);
-		pthread_mutex_unlock(&philo->all->fork[r_fork]);
+		down_forks(philo, l_fork, r_fork);
 		return_ticket(philo);
 		if (philo->eat >= philo->all->eat_num && philo->all->eat_num)
 			break ;
 		philo_sleep(philo);
 		display_message(philo, "is thinking");
 	}
-	// philo->all->done = 1;
-	// pthread_mutex_unlock(&philo->all->death);
 	return (NULL);
 }
 
-int	philo_init(t_all *all)
+int	init_mutexes(t_all *all)
 {
 	int	i;
 
 	i = -1;
-	pthread_mutex_init(&all->message, NULL);
-	pthread_mutex_init(&all->ticket_mutex, NULL);
-	pthread_mutex_init(&all->death, NULL);
-	pthread_mutex_init(&all->status, NULL);
+	if (pthread_mutex_init(&all->message, NULL))
+		return (print_error("FATAL: create mutex error"));
+	if (pthread_mutex_init(&all->ticket_mutex, NULL))
+		return (print_error("FATAL: create mutex error"));
+	if (pthread_mutex_init(&all->death, NULL))
+		return (print_error("FATAL: create mutex error"));
+	if (pthread_mutex_init(&all->status, NULL))
+		return (print_error("FATAL: create mutex error"));
 	pthread_mutex_lock(&all->death);
+	while (++i < all->phl_num)
+	{
+		if (pthread_mutex_init(&all->fork[i], NULL))
+			return (print_error("FATAL: create mutex error"));
+		if (pthread_mutex_init(&all->philo[i].eat_mutex, NULL))
+			return (print_error("FATAL: create mutex error"));
+	}
+	return (0);
+}
+
+int philo_init(t_all *all)
+{
+	int	i;
+
+	init_mutexes(all);
 	all->ticket = all->phl_num - 1;
 	all->done = 0;
-	while (++i < all->phl_num)
-		pthread_mutex_init(&all->fork[i], NULL);
 	i = -1;
 	while (++i < all->phl_num)
 	{	
 		all->philo[i].id = i;
 		all->philo[i].eat = 0;
-		all->philo[i].full = 0;
-		pthread_mutex_init(&all->philo[i].eat_mutex, NULL);
-		pthread_create(&all->philo[i].m_philo, NULL, &routine, (void *)&all->philo[i]);
-		// pthread_detach(all->philo[i].m_philo);
+		all->philo[i].cur_ttodie = all->t_start;
+		all->philo[i].eating = 0;
+		if (pthread_create(&all->philo[i].m_philo, NULL, &routine,
+				(void *)&all->philo[i]))
+			return (print_error("FATAL: can't create thread"));
 	}
 	i = -1;
-	while(++i < all->phl_num)
+	while (++i < all->phl_num)
 	{
-		pthread_join(all->philo[i].m_philo, NULL);
+		if (pthread_join(all->philo[i].m_philo, NULL))
+			return (print_error("FATAL: can't join thread"));
 	}
 	all->done = 1;
 	return (0);
@@ -227,7 +245,7 @@ int	philo_init(t_all *all)
 
 void	clear_all(t_all *all)
 {
-	int i;
+	int	i;
 
 	i = -1;
 	while (++i < all->phl_num)
@@ -247,7 +265,6 @@ int	main(int argc, char **argv)
 	int		i;
 	t_all	all;
 
-
 	if (argc > 6 || argc < 5)
 		return (print_error("incorrect num of arguments"));
 	i = 1;
@@ -260,9 +277,6 @@ int	main(int argc, char **argv)
 	if (init_args(&all, argc, argv))
 		return (1);
 	philo_init(&all);
-	// pthread_mutex_lock(&all.death);
-	// pthread_mutex_unlock(&all.death);
-	//	fix_sleep(1000000);
 	clear_all(&all);
-	return(0);
+	return (0);
 }

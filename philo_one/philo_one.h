@@ -34,7 +34,6 @@ typedef struct s_all
 	int				phl_num;
 	pthread_mutex_t	*fork;
 	pthread_mutex_t	message;
-	int				inc;
 	t_philo			*philo;
 	pthread_mutex_t	death;
 	pthread_mutex_t	ticket_mutex;
