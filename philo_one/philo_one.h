@@ -43,9 +43,21 @@ typedef struct s_all
 	long long		t_start;
 }		t_all;
 
-int	ft_atoi(const char *str);
-int	ft_strlen(char *s);
-int	ft_isdigit(int c);
-int	ft_strncmp(const char *s1, const char *s2, size_t n);
-
+int			ft_atoi(const char *str);
+int			ft_strlen(char *s);
+int			ft_isdigit(int c);
+int			ft_strncmp(const char *s1, const char *s2, size_t n);
+int			init_args(t_all *all, int argc, char **argv);
+int			init_mutexes(t_all *all);
+int			philo_init(t_all *all);
+void		*routine(void *arg);
+long long	gettime(void);
+int			print_error(char *s);
+int			is_digit_str(char *s);
+void		fix_sleep(long long n, t_all *all);
+void		display_message(t_philo *philo, char *s);
+void		*death(void *arg);
+void		eat(t_philo *philo);
+void		philo_sleep(t_philo *philo);
+void		clear_all(t_all *all);
 #endif

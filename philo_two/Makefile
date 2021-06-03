@@ -1,5 +1,7 @@
 SRCS	=	main.c \
 			utils.c \
+			death.c \
+			init.c \
 
 NAME	=	philo_two
 

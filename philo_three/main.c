@@ -28,7 +28,7 @@ int	is_digit_str(char *s)
 	return (1);
 }
 
-void	fix_sleep(long long n)
+void	fix_sleep(long long n, t_all *all)
 {
 	long long	t;
 	t = gettime();
@@ -73,7 +73,8 @@ void	display_message(t_philo *philo, char *s)
 	sem_wait(philo->all->message);
 	if (!philo->all->done && !philo->full)
 		printf("%-8lli philo %-4i %s\n", t, philo->id + 1, s);
-	sem_post(philo->all->message);
+	if (ft_strncmp(s, "is died", 8))
+		sem_post(philo->all->message);
 }
 
 void	eat(t_philo *philo)
@@ -108,8 +109,8 @@ void	*death(void *arg)
 		{
 			sem_wait(philo->all->status);
 			display_message(philo, "is died");
-			sem_post(philo->all->die);
 			philo->all->done = 1;
+			sem_post(philo->all->die);
 			sem_post(philo->eat_sem);
 			exit(0);
 		}
@@ -165,8 +166,8 @@ void	*is_die(void *arg)
 	int		i;
 
 	all = arg;
-	sem_wait(all->die);
 	i = -1;
+	sem_wait(all->die);
 	while (++i < all->phl_num)
 	{
 		kill(all->philo[i].pid, SIGTERM);

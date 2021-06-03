@@ -1,5 +1,10 @@
 SRCS	=	main.c \
 			utils.c \
+			philo_utils.c \
+			routine.c \
+			eat_sleep.c \
+			init.c \
+			death.c \
 
 NAME	=	philo_one
 
