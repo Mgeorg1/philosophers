@@ -14,7 +14,7 @@ int	ft_atoi(const char *str)
 	int			k;
 	long long	b;
 
-	b = 922337203685477580;
+	b = 214748364;
 	k = 1;
 	i = 0;
 	while (ft_isspace(str) == 1)

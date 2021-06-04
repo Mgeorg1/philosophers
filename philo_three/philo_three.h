@@ -1,5 +1,5 @@
-#ifndef PHILO_TWO_H
-# define PHILO_TWO_H
+#ifndef PHILO_THREE_H
+# define PHILO_THREE_H
 # include <unistd.h>
 # include <stdlib.h>
 # include <pthread.h>
@@ -48,10 +48,23 @@ typedef struct s_all
 	long long		t_start;
 }		t_all;
 
-int		ft_atoi(const char *str);
-int		ft_strlen(char *s);
-int		ft_isdigit(int c);
-int		ft_strncmp(const char *s1, const char *s2, size_t n);
-char	*ft_itoa(int n);
+int			ft_atoi(const char *str);
+int			ft_strlen(char *s);
+int			ft_isdigit(int c);
+int			ft_strncmp(const char *s1, const char *s2, size_t n);
+char		*ft_itoa(int n);
+void		*is_die(void *arg);
+void		*death(void *arg);
+void		*routine(void *arg);
+void		eat(t_philo *philo);
+void		philo_sleep(t_philo *philo);
+long long	gettime(void);
+int			print_error(char *s);
+int			is_digit_str(char *s);
+void		fix_sleep(long long n);
+int			init_args(t_all *all, int argc, char **argv);
+void		clear_all(t_all *all);
+int			philo_init(t_all *all);
+void		display_message(t_philo *philo, char *s);
 
 #endif

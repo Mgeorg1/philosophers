@@ -2,6 +2,10 @@ SRCS	=	main.c \
 			utils.c \
 			death.c \
 			init.c \
+			philo_utils.c \
+			eat_sleep.c \
+			routine.c \
+			utils2.c \
 
 NAME	=	philo_two
 

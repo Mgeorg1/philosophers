@@ -11,12 +11,13 @@ int	main(int argc, char **argv)
 	while (argv[i])
 	{
 		if (!is_digit_str(argv[i]))
-			return (print_error("Argument is not digit"));
+			return (print_error("Argument is not natural number"));
 		i++;
 	}
 	if (init_args(&all, argc, argv))
 		return (1);
-	philo_init(&all);
+	if (philo_init(&all) < 0)
+		return (1);
 	clear_all(&all);
 	return (0);
 }

@@ -58,5 +58,13 @@ void		fix_sleep(long long n, t_all *all);
 long long	gettime(void);
 void		display_message(t_philo *philo, char *s);
 int			print_error(char *s);
+void		philo_sleep(t_philo *philo);
+void		eat(t_philo *philo);
+int			is_digit_str(char *s);
+void		get_ticket(t_philo *philo);
+void		return_ticket(t_philo *philo);
+void		is_full(t_philo *philo);
+void		life_cycle(t_philo *philo);
+void		*routine(void *arg);
 
 #endif

@@ -1,4 +1,4 @@
-#include "./philo_two.h"
+#include "./philo_three.h"
 
 static int	ft_isspace(const char *str)
 {
@@ -14,7 +14,7 @@ int	ft_atoi(const char *str)
 	int			k;
 	long long	b;
 
-	b = 922337203685477580;
+	b = 214748364;
 	k = 1;
 	i = 0;
 	while (ft_isspace(str) == 1)
@@ -79,57 +79,4 @@ int	ft_strncmp(const char *s1, const char *s2, size_t n)
 		i++;
 	}
 	return (0);
-}
-
-static int	diglen(int n)
-{
-	int	l;
-	int	n1;
-
-	l = 0;
-	n1 = n;
-	if (n == 0)
-		return (1);
-	while (n1 != 0)
-	{
-		l++;
-		n1 = n1 / 10;
-	}
-	return (l);
-}
-
-static int	is_negative(int n)
-{
-	if (n < 0)
-		return (1);
-	return (0);
-}
-
-char	*ft_itoa(int n)
-{
-	int			len;
-	long long	n1;
-	char		*a;
-	int			i;
-
-	n1 = (long long)n;
-	i = 0;
-	len = diglen(n) + is_negative(n);
-	if (n < 0)
-		n1 *= -1;
-	a = (char *)malloc((len + 1) * sizeof(char));
-	if (a == NULL)
-		return (NULL);
-	if (n1 == 0)
-		a[0] = '0';
-	while (n1 != 0)
-	{
-		a[len - 1 - i] = n1 % 10 + '0';
-		n1 = n1 / 10;
-		i++;
-	}
-	a[len] = 0;
-	if (n < 0)
-		a[0] = '-';
-	return (a);
 }
